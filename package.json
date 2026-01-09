@@ -13,8 +13,8 @@
     "cy:prod:open": "cross-env TEST_ENV=prod cypress open",
     "cy:retry": "cypress run --env failed=true",
     "bs:dev": "cross-env ENV=dev BASE_URL=https://express.notarypro.ca npx browserstack-cypress run",
-    "bs:staging": "cross-env ENV=staging BASE_URL=https://staging.notarypro.ca npx browserstack-cypress run",
-    "bs:prod": "cross-env ENV=prod BASE_URL=https://www.notarypro.ca npx browserstack-cypress run"
+    "bs:staging": "cross-env ENV=staging BASE_URL=https://notarypro.atlassian.net/jira/software/projects/QA/boards/78?selectedIssue=QA-7 npx browserstack-cypress run",
+    "bs:prod": "cross-env ENV=prod BASE_URL=https://express.notarypro.ca npx browserstack-cypress run"
   },
   "repository": {
     "type": "git",

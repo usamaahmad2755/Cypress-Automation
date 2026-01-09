@@ -24,10 +24,43 @@
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
 
-Cypress.Commands.add('login', () => {
-  cy.visit('/login');
+// Import page objects for use in custom commands
+// Using require for CommonJS compatibility (package.json has "type": "commonjs")
+const { LoginPage, B2CIntakePage } = require('../pages');
 
-  cy.get('#email').type(Cypress.env('USERNAME'));
-  cy.get('#password').type(Cypress.env('PASSWORD'));
-  cy.get('button[type="submit"]').click();
+/**
+ * Custom login command using Page Object Model
+ * Usage: cy.login() or cy.login('email@example.com', 'password')
+ */
+Cypress.Commands.add('login', (email, password) => {
+  // If email/password provided, use them; otherwise use env vars
+  if (email && password) {
+    LoginPage.visit();
+    LoginPage.login(email, password);
+  } else {
+    LoginPage.visit();
+    LoginPage.loginWithEnv();
+  }
+});
+
+/**
+ * Custom command to fill B2C Intake Form
+ * Usage: cy.fillB2CIntakeForm({ name: 'John Doe', cityProvince: 'Toronto', email: 'john@example.com', confirmEmail: 'john@example.com' })
+ */
+Cypress.Commands.add('fillB2CIntakeForm', (formData) => {
+  const { name, cityProvince, email, confirmEmail } = formData;
+  
+  B2CIntakePage.fillName(name);
+  B2CIntakePage.fillCityProvince(cityProvince);
+  B2CIntakePage.fillEmail(email);
+  B2CIntakePage.fillConfirmEmail(confirmEmail);
+});
+
+/**
+ * Custom command to submit B2C Intake Form (fill and click next)
+ * Usage: cy.submitB2CIntakeForm({ name: 'John Doe', cityProvince: 'Toronto', email: 'john@example.com', confirmEmail: 'john@example.com' })
+ */
+Cypress.Commands.add('submitB2CIntakeForm', (formData) => {
+  cy.fillB2CIntakeForm(formData);
+  B2CIntakePage.clickNext();
 });
