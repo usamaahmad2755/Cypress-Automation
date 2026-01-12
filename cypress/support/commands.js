@@ -26,27 +26,19 @@
 
 // Import page objects for use in custom commands
 // Using require for CommonJS compatibility (package.json has "type": "commonjs")
-const { LoginPage, B2CIntakePage } = require('../pages');
+const { B2CIntakePage } = require('../pages');
 
-/**
- * Custom login command using Page Object Model
- * Usage: cy.login() or cy.login('email@example.com', 'password')
- */
-Cypress.Commands.add('login', (email, password) => {
-  // If email/password provided, use them; otherwise use env vars
-  if (email && password) {
-    LoginPage.visit();
-    LoginPage.login(email, password);
-  } else {
-    LoginPage.visit();
-    LoginPage.loginWithEnv();
-  }
-});
+// Cypress.Commands.add('login', (email, password) => {
+//   // If email/password provided, use them; otherwise use env vars
+//   if (email && password) {
+//     LoginPage.visit();
+//     LoginPage.login(email, password);
+//   } else {
+//     LoginPage.visit();
+//     LoginPage.loginWithEnv();
+//   }
+// });
 
-/**
- * Custom command to fill B2C Intake Form
- * Usage: cy.fillB2CIntakeForm({ name: 'John Doe', cityProvince: 'Toronto', email: 'john@example.com', confirmEmail: 'john@example.com' })
- */
 Cypress.Commands.add('fillB2CIntakeForm', (formData) => {
   const { name, cityProvince, email, confirmEmail } = formData;
   
@@ -56,11 +48,15 @@ Cypress.Commands.add('fillB2CIntakeForm', (formData) => {
   B2CIntakePage.fillConfirmEmail(confirmEmail);
 });
 
-/**
- * Custom command to submit B2C Intake Form (fill and click next)
- * Usage: cy.submitB2CIntakeForm({ name: 'John Doe', cityProvince: 'Toronto', email: 'john@example.com', confirmEmail: 'john@example.com' })
- */
 Cypress.Commands.add('submitB2CIntakeForm', (formData) => {
   cy.fillB2CIntakeForm(formData);
   B2CIntakePage.clickNext();
+});
+
+// Upload supporting document(s) in B2C Intake using the file input (#fileInput)
+// `filePath` should usually be a fixture path like 'cypress/fixtures/example.pdf'
+// or just 'example.pdf' if you pass { fromFixture: true } and handle it yourself.
+Cypress.Commands.add('uploadB2CFile', (filePath, options = {}) => {
+  // Delegate to the page object so selector logic stays in one place
+  B2CIntakePage.uploadFile(filePath, options);
 });

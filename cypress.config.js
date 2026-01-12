@@ -4,6 +4,9 @@ const dotenv = require("dotenv");
 const fs = require("fs");
 
 module.exports = defineConfig({
+  viewportWidth: 1440,
+  viewportHeight: 900,
+  defaultCommandTimeout: 10000,
   retries: {
     runMode: 2,
     openMode: 1
