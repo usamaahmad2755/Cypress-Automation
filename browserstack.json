@@ -19,7 +19,8 @@
         "exclude": [],
         "parallels": 1,
         "npm_dependencies": {
-            "dotenv": "^17.2.3"
+            "dotenv": "^17.2.3",
+            "cypress-real-events": "^1.15.0"
         },
         "auto_import_dev_dependencies": false,
         "exclude_dependencies": [],

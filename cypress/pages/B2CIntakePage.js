@@ -7,35 +7,43 @@ const { BasePage } = require('./BasePage');
 const B2CIntakePage = {
   
   get nameField() {
-    return 'input[name="name"]';
+    return 'input[data-testid="intake-basic-info-full-name-input"]';
   },
 
   get cityProvinceField() {
-    return 'input[name="random-name-field"]';
+    return 'input[data-testid="google-places-location-input"]';
   },
 
   get mailingAddressField() {
-    return 'input[placeholder="Mailing Address"]';
+    return 'input[data-testid="google-places-mailing-input"]';
   },
 
   get emailField() {
-    return 'input[name="email"]';
+    return 'input[data-testid="intake-basic-info-email-input"]';
   },
 
   get confirmEmailField() {
-    return 'input[name="confirmEmail"]';
+    return 'input[data-testid="intake-basic-info-confirm-email-input"]';
   },
 
   get phoneField() {
-    return 'input[name="phone"]';
+    return 'input[data-testid="identity-info-phone-input"]';
   },
 
   get additionalEmailField() {
-    return 'input.MuiInputBase-input.MuiOutlinedInput-input[type="text"]';
+    return 'input[data-testid="add-recipient-email-input"]';
   },
 
   get nextButton() {
     return 'button:contains("Next")';
+  },
+
+  get checkoutButton() {
+    return 'button[data-testid="checkout-footer-submit"]';
+  },
+
+  get paymentCardBookButton() {
+    return 'button[data-testid="payment-card-book"]';
   },
 
   get fileInput() {
@@ -67,7 +75,7 @@ const B2CIntakePage = {
   },
 
   get myCartButton() {
-    return 'button';
+    return 'button[data-testid="header-cart-toggle"]';
   },
 
   get serviceFeeLabel() {
@@ -79,7 +87,7 @@ const B2CIntakePage = {
   },
 
   closeButton() {
-    return cy.contains('button', 'Close');
+    return cy.get('button[data-testid="cart-drawer-close"]');
   },
 
   getNameField() {
@@ -150,8 +158,108 @@ const B2CIntakePage = {
     return cy.get(this.additionalEmailField).last().clear().type(email);
   },
 
+  fillCardNumber(cardNumber) {
+    return cy.get('iframe.sq-card-component',)
+      .should('be.visible')
+      .then(($iframe) => {
+        cy.wrap($iframe).realClick();
+        
+        cy.get('body').realPress('Home');
+        
+        cy.get('body').realPress(['Control', 'a']);
+        
+        cy.get('body').realPress('Backspace');
+        
+        const cardNumberStr = cardNumber.replace(/\s/g, '');
+        cy.get('body').realType(cardNumberStr, { delay: 100 });
+        
+        return cy.wrap(true);
+      });
+  },
+
+  fillExpirationDate(expirationDate) {
+    
+    return cy.get('iframe.sq-card-component')
+      .should('be.visible')
+      .then(() => {
+
+        cy.get('body').realPress('Tab');
+        
+        cy.get('body').realPress(['Control', 'a']);
+
+        cy.get('body').realPress('Backspace');
+        
+        cy.get('body').realType(expirationDate, { delay: 100 });
+        
+        cy.log('Expiration date typed');
+        return cy.wrap(true);
+      });
+  },
+
+  fillCVV(cvv) {
+    
+    return cy.get('iframe.sq-card-component')
+      .should('be.visible')
+      .then(() => {
+        
+        cy.get('body').realPress('Tab');
+        
+        cy.get('body').realPress(['Control', 'a']);
+    
+        cy.get('body').realPress('Backspace');
+        
+        cy.get('body').realType(cvv, { delay: 100 });
+        
+        cy.log('CVV typed');
+        return cy.wrap(true);
+      });
+  },
+
+  fillPostalCode(postalCode) {
+    return cy.get('iframe.sq-card-component')
+      .should('be.visible')
+      .then(($iframe) => {
+        
+        cy.wrap($iframe).realClick();
+        
+        cy.get('body').realPress('Tab');
+        
+        cy.get('body').realPress(['Control', 'a']);
+
+        cy.get('body').realPress('Backspace');
+        
+        cy.get('body').realType(postalCode, { delay: 100 });
+        
+        return cy.wrap(true);
+      });
+  },
+
   clickNext() {
     return cy.get(this.nextButton).click();
+  },
+
+  clickCheckout() {
+    return cy.get(this.checkoutButton)
+      .should('be.visible')
+      .and('not.be.disabled')
+      .click();
+  },
+
+  clickPaymentCardBook() {
+    return cy.get(this.paymentCardBookButton)
+      .should('be.visible')
+      .should('be.enabled')
+      .click();
+  },
+
+  verifyPaymentProcessingText() {
+    return cy.contains('We are processing your payment.')
+      .should('be.visible');
+  },
+
+  verifyBookingConfirmed() {
+    return cy.contains('h5', 'Your Booking is Confirmed!', { timeout: 20000 })
+      .should('be.visible');
   },
 
   fillForm(formData) {
@@ -226,14 +334,14 @@ const B2CIntakePage = {
   },
 
   clickMyCart() {
-    return cy.contains(this.myCartButton, 'My Cart')
+    return cy.get(this.myCartButton)
       .should('be.visible')
       .and('not.be.disabled')
       .click();
   },
 
   getUnitPrice() {
-    return cy.get('p.text-muted')
+    return cy.get('p.MuiTypography-root.MuiTypography-body1.text-muted')
       .should('be.visible')
       .first()
       .invoke('text')
@@ -294,9 +402,7 @@ const B2CIntakePage = {
   },
 
   standardShippingCard() {
-    return cy.contains('p.MuiTypography-body1', 'Standard Shipping')
-      .closest('.MuiCardContent-root')
-      .closest('.MuiBox-root');
+    return cy.get('[data-testid="addon-card-2-select"]');
   },
 
   clickStandardShipping() {
@@ -430,6 +536,211 @@ const B2CIntakePage = {
           .and('have.class', 'css-12tonjy');
       })
       .then(() => cy.wrap(timeText));
+  },
+
+  aboutYourDocumentAccordion() {
+    return cy.contains('h6.MuiTypography-subtitle1', 'About Your Document')
+      .closest('.MuiAccordion-heading')
+      .find('svg[data-testid="ExpandMoreIcon"]')
+      .should('be.visible')
+      .closest('button')
+      .should('be.visible');
+  },
+
+  /**
+   * Clicks on the "About Your Document" accordion to expand/collapse it
+   * Finds the accordion by the heading text, then locates the ExpandMoreIcon and clicks the button
+   * @returns {Cypress.Chainable}
+   */
+  clickAboutYourDocumentAccordion() {
+    return this.aboutYourDocumentAccordion().click();
+  },
+
+  /**
+   * Gets the file name element within the "About Your Document" accordion
+   * @returns {Cypress.Chainable}
+   */
+  getDocumentFileName() {
+    return cy.contains('h6.MuiTypography-subtitle1', 'About Your Document')
+      .closest('.MuiAccordion-root')
+      .find('.MuiAccordionDetails-root')
+      .find('p.MuiTypography-body1')
+      .first();
+  },
+
+  /**
+   * Gets the document type chip element within the "About Your Document" accordion
+   * Uses data-testid="CancelIcon" to locate the chip, then gets the label
+   * @returns {Cypress.Chainable}
+   */
+  getDocumentTypeChip() {
+    return cy.contains('h6.MuiTypography-subtitle1', 'About Your Document')
+      .closest('.MuiAccordion-root')
+      .find('.MuiAccordionDetails-root')
+      .find('svg[data-testid="CancelIcon"]')
+      .closest('.MuiChip-root')
+      .find('.MuiChip-label');
+  },
+
+  /**
+   * Gets the number of notary seals input field within the "About Your Document" accordion
+   * @returns {Cypress.Chainable}
+   */
+  getNumberOfNotarySealsInput() {
+    return cy.contains('h6.MuiTypography-subtitle1', 'About Your Document')
+      .closest('.MuiAccordion-root')
+      .find('.MuiAccordionDetails-root')
+      .find('input[type="number"]');
+  },
+
+  /**
+   * Verifies the file name in the "About Your Document" accordion
+   * @param {string} expectedFileName - Expected file name (e.g., "Notary-File.pdf")
+   * @returns {Cypress.Chainable}
+   */
+  verifyDocumentFileName(expectedFileName) {
+    return this.getDocumentFileName()
+      .should('be.visible')
+      .and('contain.text', expectedFileName);
+  },
+
+  /**
+   * Verifies the document type in the "About Your Document" accordion
+   * @param {string} expectedDocumentType - Expected document type (e.g., "Affidavit")
+   * @returns {Cypress.Chainable}
+   */
+  verifyDocumentType(expectedDocumentType) {
+    return this.getDocumentTypeChip()
+      .should('be.visible')
+      .and('contain.text', expectedDocumentType);
+  },
+
+  /**
+   * Verifies the number of notary seals in the "About Your Document" accordion
+   * @param {number|string} expectedNumber - Expected number of seals (e.g., 2 or "2")
+   * @returns {Cypress.Chainable}
+   */
+  verifyNumberOfNotarySeals(expectedNumber) {
+    return this.getNumberOfNotarySealsInput()
+      .should('be.visible')
+      .and('have.value', String(expectedNumber));
+  },
+
+  /**
+   * Gets the subtotal element from the summary section
+   * Uses id="subtotal-1" to locate the subtotal
+   * @returns {Cypress.Chainable}
+   */
+  getSubtotalInSummary() {
+    return cy.get('#subtotal-1')
+      .find('.MuiBox-root.css-70qvj9')
+      .find('p.MuiTypography-body2')
+      .last();
+  },
+
+  /**
+   * Gets the price value from a summary line item by its id
+   * @param {string} itemId - The id of the summary item (e.g., "service", "additional-seals", "addons-2")
+   * @returns {Cypress.Chainable<number>}
+   */
+  getSummaryItemPrice(itemId) {
+    return cy.get(`#${itemId}`)
+      .find('.MuiBox-root.css-70qvj9')
+      .find('p.MuiTypography-body2')
+      .last()
+      .should('be.visible')
+      .invoke('text')
+      .then(text => Number(text.trim()));
+  },
+
+  /**
+   * Verifies the subtotal value in the summary section is visible and has a value
+   * @returns {Cypress.Chainable}
+   */
+  verifySubtotalInSummary() {
+    return this.getSubtotalInSummary()
+      .should('be.visible')
+      .invoke('text')
+      .then(text => {
+        const subtotalValue = Number(text.trim());
+        expect(subtotalValue).to.be.a('number');
+        expect(subtotalValue).to.be.greaterThan(0);
+      });
+  },
+
+  /**
+   * Gets the Notary Seals price value from the HTML structure
+   * Finds the div containing "Notary Seals" and extracts the price from the second paragraph
+   * @returns {Cypress.Chainable<string>} The price value (e.g., "$30.95")
+   */
+  getNotarySealsPrice() {
+    return cy.contains('p.MuiTypography-body1', 'Notary Seals')
+      .closest('div.d-flex.flex-column.justify-content-center.align-items-start')
+      .find('p.text-muted')
+      .should('be.visible')
+      .invoke('text')
+      .then(price => {
+        const priceValue = price.trim();
+        cy.log(`Notary Seals Price: ${priceValue}`);
+        return cy.wrap(priceValue);
+      });
+  },
+
+  /**
+   * Gets the taxes percentage from the taxes section
+   * Extracts percentage from text like "Taxes (5.00%) & Fees"
+   * @returns {Cypress.Chainable<number>} The percentage value (e.g., 5.00)
+   */
+  getTaxesPercentage() {
+    return cy.get('#taxes-1')
+      .find('p.MuiTypography-body2')
+      .contains('Taxes')
+      .should('be.visible')
+      .invoke('text')
+      .then(text => {
+        // Extract percentage from text like "Taxes (5.00%) & Fees"
+        const match = text.match(/\(([\d.]+)%\)/);
+        const percentage = match ? Number(match[1]) : 0;
+        cy.log(`Taxes Percentage: ${percentage}%`);
+        return cy.wrap(percentage);
+      });
+  },
+
+  /**
+   * Gets the taxes amount from the taxes section
+   * Combines the $ symbol and the amount value
+   * @returns {Cypress.Chainable<number>} The taxes amount (e.g., 6.81)
+   */
+  getTaxesAmount() {
+    return cy.get('#taxes-1')
+      .find('.MuiBox-root.css-70qvj9')
+      .should('be.visible')
+      .invoke('text')
+      .then(text => {
+        // Extract numeric value from text (e.g., "$6.81" -> 6.81)
+        const taxesAmount = Number(text.trim().replace(/[^0-9.]/g, ''));
+        cy.log(`Taxes Amount: $${taxesAmount}`);
+        return cy.wrap(taxesAmount);
+      });
+  },
+
+  /**
+   * Gets the Total (CAD) value from the summary section
+   * Finds the div containing "Total (CAD)" and extracts the total amount
+   * @returns {Cypress.Chainable<number>} The total amount (e.g., 102.66)
+   */
+  getTotalCAD() {
+    return cy.contains('p.MuiTypography-body2', 'Total (CAD)')
+      .closest('.MuiBox-root.css-k3gutg')
+      .find('.MuiBox-root.css-70qvj9')
+      .should('be.visible')
+      .invoke('text')
+      .then(text => {
+        // Extract numeric value from text (e.g., "$102.66" -> 102.66)
+        const total = Number(text.trim().replace(/[^0-9.]/g, ''));
+        cy.log(`Total (CAD): $${total}`);
+        return cy.wrap(total);
+      });
   }
 
 };
