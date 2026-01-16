@@ -1,0 +1,161 @@
+name: Cypress BrowserStack CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+  pull_request:
+    branches:
+      - main
+      - master
+      - develop
+  schedule:
+    # Run daily at 2 AM UTC (adjust timezone as needed)
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to run tests'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+jobs:
+  cypress-browserstack:
+    name: Cypress Tests on BrowserStack - ${{ matrix.environment }}
+    runs-on: ubuntu-latest
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: ${{ github.event.inputs.environment && [github.event.inputs.environment] || ['dev', 'staging'] }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set environment variables
+        id: set-env
+        run: |
+          if [ "${{ github.event_name }}" == "schedule" ]; then
+            BUILD_DATE=$(date -u +'%Y-%m-%d')
+            BUILD_NAME="Nightly Build - $BUILD_DATE - ${{ matrix.environment }}"
+            echo "BUILD_DATE=$BUILD_DATE" >> $GITHUB_ENV
+          else
+            BUILD_NAME="CI Build - ${{ github.run_number }} - ${{ matrix.environment }}"
+          fi
+          
+          if [ "${{ matrix.environment }}" == "dev" ]; then
+            echo "BASE_URL=https://notarypro-web-v2-demo-b3hkbkbvfudsb6ad.canadacentral-01.azurewebsites.net/" >> $GITHUB_ENV
+          elif [ "${{ matrix.environment }}" == "staging" ]; then
+            echo "BASE_URL=https://notarypro.atlassian.net/jira/software/projects/QA/boards/78?selectedIssue=QA-7" >> $GITHUB_ENV
+          elif [ "${{ matrix.environment }}" == "prod" ]; then
+            echo "BASE_URL=https://express.notarypro.ca" >> $GITHUB_ENV
+          fi
+          
+          echo "ENV=${{ matrix.environment }}" >> $GITHUB_ENV
+          echo "BUILD_NAME=$BUILD_NAME" >> $GITHUB_ENV
+
+      - name: Create browserstack.json from template
+        run: |
+          # Create browserstack.json from template with credentials from secrets
+          node -e "
+          const fs = require('fs');
+          const templatePath = 'browserstack.json.template';
+          const config = JSON.parse(fs.readFileSync(templatePath, 'utf8'));
+          
+          // Replace credentials from GitHub secrets
+          config.auth.username = process.env.BROWSERSTACK_USERNAME;
+          config.auth.access_key = process.env.BROWSERSTACK_ACCESS_KEY;
+          
+          // Update build settings
+          config.run_settings.build_name = process.env.BUILD_NAME;
+          const projectName = '${{ github.event_name }}' === 'schedule' 
+            ? 'NotaryPro - ${{ matrix.environment }} - Nightly'
+            : 'NotaryPro - ${{ matrix.environment }}';
+          config.run_settings.project_name = projectName;
+          
+          // Write the complete config
+          fs.writeFileSync('browserstack.json', JSON.stringify(config, null, 2));
+          console.log('✅ browserstack.json created successfully');
+          "
+        env:
+          BROWSERSTACK_USERNAME: ${{ secrets.BROWSERSTACK_USERNAME }}
+          BROWSERSTACK_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
+          BUILD_NAME: ${{ env.BUILD_NAME }}
+
+      - name: Run Cypress tests on BrowserStack
+        run: |
+          if [ "${{ matrix.environment }}" == "dev" ]; then
+            npm run bs:dev
+          elif [ "${{ matrix.environment }}" == "staging" ]; then
+            npm run bs:staging
+          elif [ "${{ matrix.environment }}" == "prod" ]; then
+            npm run bs:prod
+          fi
+        continue-on-error: false
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browserstack-results-${{ matrix.environment }}-${{ github.event_name == 'schedule' && env.BUILD_DATE || github.run_number }}
+          path: |
+            results/**
+            log/**
+          retention-days: 30
+
+      - name: Comment PR with test results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let comment = '## 🧪 Cypress BrowserStack Test Results - ${{ matrix.environment }}\n\n';
+            
+            if (fs.existsSync('results/browserstack-cypress-report.json')) {
+              const report = JSON.parse(fs.readFileSync('results/browserstack-cypress-report.json', 'utf8'));
+              comment += `**Status:** ${{ job.status }}\n\n`;
+              comment += `**Build:** ${{ env.BUILD_NAME }}\n\n`;
+            } else {
+              comment += `**Status:** ${{ job.status }}\n\n`;
+              comment += 'Test results are being processed by BrowserStack.\n\n';
+            }
+            
+            comment += `[View detailed results on BrowserStack](https://automate.browserstack.com/)\n\n`;
+            comment += `---\n*This comment was automatically generated by GitHub Actions*`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      - name: Notify on failure (scheduled runs)
+        if: github.event_name == 'schedule' && failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚨 Nightly Test Failure - ${{ matrix.environment }}`,
+              body: `Nightly Cypress tests failed for **${{ matrix.environment }}** environment.\n\n[View workflow run](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`,
+              labels: ['bug', 'test-failure']
+            });
