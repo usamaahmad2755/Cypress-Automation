@@ -6,11 +6,17 @@ on:
       - main
       - master
       - develop
+      - dev
+      - staging
+      - prod
   pull_request:
     branches:
       - main
       - master
       - develop
+      - dev
+      - staging
+      - prod
   schedule:
     # Run daily at 2 AM UTC (adjust timezone as needed)
     - cron: '0 2 * * *'
@@ -34,8 +40,22 @@ jobs:
     steps:
       - id: set-matrix
         run: |
+          # Check if manual dispatch with environment selected
           if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.environment }}" ]; then
             echo "environments=[\"${{ github.event.inputs.environment }}\"]" >> $GITHUB_OUTPUT
+          # Check if push to dev branch
+          elif [ "${{ github.event_name }}" == "push" ] && [ "${{ github.ref_name }}" == "dev" ]; then
+            echo "environments=[\"dev\"]" >> $GITHUB_OUTPUT
+          # Check if push to staging branch
+          elif [ "${{ github.event_name }}" == "push" ] && [ "${{ github.ref_name }}" == "staging" ]; then
+            echo "environments=[\"staging\"]" >> $GITHUB_OUTPUT
+          # Check if push to prod branch
+          elif [ "${{ github.event_name }}" == "push" ] && [ "${{ github.ref_name }}" == "prod" ]; then
+            echo "environments=[\"prod\"]" >> $GITHUB_OUTPUT
+          # Default: run dev only for push events
+          elif [ "${{ github.event_name }}" == "push" ]; then
+            echo "environments=[\"dev\"]" >> $GITHUB_OUTPUT
+          # For PRs and scheduled: run dev and staging
           else
             echo "environments=[\"dev\", \"staging\"]" >> $GITHUB_OUTPUT
           fi

@@ -65,13 +65,18 @@ The workflow automatically:
 ### Main CI/CD Pipeline (`cypress-browserstack.yml`)
 
 **Triggers:**
-- Push to `main`, `master`, or `develop` branches
-- Pull requests to `main`, `master`, or `develop` branches
+- Push to `main`, `master`, `develop`, `dev`, `staging`, or `prod` branches
+- Pull requests to `main`, `master`, `develop`, `dev`, `staging`, or `prod` branches
 - Scheduled daily at 2:00 AM UTC (configurable via cron)
 - Manual workflow dispatch with environment selection
 
 **Features:**
-- Runs tests in parallel for `dev` and `staging` environments (by default)
+- **Branch-based execution**: 
+  - Push to `dev` branch → runs **dev** tests only
+  - Push to `staging` branch → runs **staging** tests only
+  - Push to `prod` branch → runs **prod** tests only
+  - Push to any other branch → runs **dev** tests only (default)
+  - Pull requests → runs **dev + staging** tests
 - Supports manual selection of `dev`, `staging`, or `prod` environments
 - Uploads test results as artifacts
 - Comments on PRs with test results
@@ -79,8 +84,13 @@ The workflow automatically:
 - Build name includes run number/environment or date for scheduled runs
 
 **Usage:**
-- **Automatic on Push/PR**: Tests run automatically on push/PR
-- **Scheduled**: Runs daily at 2 AM UTC automatically
+- **Automatic on Push**: Tests run automatically based on branch name
+  - `dev` branch → dev environment only
+  - `staging` branch → staging environment only
+  - `prod` branch → prod environment only
+  - Any other branch → **dev environment only** (default)
+- **Pull Requests**: Runs dev + staging tests automatically
+- **Scheduled**: Runs daily at 2 AM UTC automatically (dev + staging)
 - **Manual**: Go to Actions → Cypress BrowserStack CI/CD → Run workflow → Select environment
 
 **Customizing Schedule:**
