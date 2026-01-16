@@ -55,39 +55,94 @@ For local development, create your own `browserstack.json`:
 ### CI/CD Pipeline
 
 The workflow automatically:
-- Reads `browserstack.json.template` from the repository
-- Creates `browserstack.json` with credentials from GitHub Secrets
-- Updates build name and project name based on the environment
-- Runs tests using the generated configuration
+1. **Determines matrix** - The `determine-matrix` job analyzes the trigger event and branch name to set which environments to test
+2. **Creates configuration** - Reads `browserstack.json.template` from the repository
+3. **Injects secrets** - Creates `browserstack.json` with credentials from GitHub Secrets
+4. **Sets environment** - Updates build name, project name, and BASE_URL based on the environment
+5. **Runs tests** - Executes Cypress tests on BrowserStack using the generated configuration
+
+**Workflow Steps:**
+1. Checkout code from repository
+2. Setup Node.js 18 with npm caching
+3. Install dependencies (`npm ci`)
+4. Set environment variables (BASE_URL, ENV, BUILD_NAME)
+5. Create `browserstack.json` from template with secrets
+6. Run Cypress tests on BrowserStack
+7. Upload test results as artifacts
+8. Comment on PRs (if triggered by PR)
+9. Create GitHub issues on scheduled test failures (if scheduled run fails)
 
 ## 🚀 Workflow
 
 ### Main CI/CD Pipeline (`cypress-browserstack.yml`)
 
+The pipeline uses a dynamic matrix strategy that automatically determines which environments to test based on the trigger event and branch name.
+
 **Triggers:**
-- Push to `main`, `master`, or `develop` branches
-- Pull requests to `main`, `master`, or `develop` branches
-- Scheduled daily at 2:00 AM UTC (configurable via cron)
+- Push to `main`, `master`, `develop`, `dev`, `staging`, or `prod` branches
+- Pull requests to `main`, `master`, `develop`, `dev`, `staging`, or `prod` branches
+- Scheduled daily at 8:20 PM UTC (configurable via cron)
 - Manual workflow dispatch with environment selection
 
-**Features:**
-- Runs tests in parallel for `dev` and `staging` environments (by default)
-- Supports manual selection of `dev`, `staging`, or `prod` environments
-- Uploads test results as artifacts
-- Comments on PRs with test results
-- Creates GitHub issues on scheduled test failures
-- Build name includes run number/environment or date for scheduled runs
+**Branch-Based Execution Logic:**
 
-**Usage:**
-- **Automatic on Push/PR**: Tests run automatically on push/PR
-- **Scheduled**: Runs daily at 2 AM UTC automatically
-- **Manual**: Go to Actions → Cypress BrowserStack CI/CD → Run workflow → Select environment
+The workflow automatically detects the branch name and runs the appropriate environment:
+
+| Event Type | Branch Name | Environments Tested |
+|------------|-------------|---------------------|
+| Push | `dev` | `dev` only |
+| Push | `staging` | `staging` only |
+| Push | `prod` | `prod` only |
+| Push | Any other branch (main, master, develop, feature branches, etc.) | `dev` only (default) |
+| Pull Request | Any branch | `dev` + `staging` |
+| Scheduled | N/A | `dev` only |
+| Manual Dispatch | N/A | Selected environment only |
+
+**Features:**
+- ✅ **Smart branch detection** - Automatically runs the right environment based on branch name
+- ✅ **Dynamic matrix strategy** - Uses a `determine-matrix` job to set environments dynamically
+- ✅ **Template-based security** - Creates `browserstack.json` from template with secrets
+- ✅ **Test result artifacts** - Uploads results for 30 days
+- ✅ **PR integration** - Automatically comments on pull requests with test results
+- ✅ **Failure notifications** - Creates GitHub issues on scheduled test failures
+- ✅ **Build naming** - Includes run number/environment or date for scheduled runs
+
+**Usage Examples:**
+
+```bash
+# Push to dev branch → runs dev tests only
+git push origin dev
+
+# Push to staging branch → runs staging tests only
+git push origin staging
+
+# Push to prod branch → runs prod tests only
+git push origin prod
+
+# Push to main/master/develop → runs dev tests only (default)
+git push origin main
+
+# Push to any feature branch → runs dev tests only (default)
+git push origin feature/new-feature
+```
+
+**Manual Workflow Dispatch:**
+1. Go to **Actions** tab in your repository
+2. Select **"Cypress BrowserStack CI/CD"** workflow
+3. Click **"Run workflow"**
+4. Choose environment: `dev`, `staging`, or `prod`
+5. Click **"Run workflow"**
 
 **Customizing Schedule:**
 Edit the `cron` expression in `.github/workflows/cypress-browserstack.yml`:
 ```yaml
-- cron: '0 2 * * *'  # 2 AM UTC daily
+schedule:
+  - cron: '20 20 * * *'  # 8:20 PM UTC daily
 ```
+
+**Cron Format:** `minute hour day month weekday`
+- Current: `20 20 * * *` = 8:20 PM UTC every day
+- To change timezone: Calculate UTC equivalent (e.g., 8:20 PM EST = 01:20 UTC next day)
 
 ## 🔧 Environment Configuration
 
@@ -132,7 +187,7 @@ Results include:
 ## 📝 Customization
 
 ### Adding More Browsers
-Edit `browserstack.json` to add more browser/OS combinations:
+Edit `browserstack.json.template` to add more browser/OS combinations:
 ```json
 "browsers": [
     {
@@ -148,8 +203,10 @@ Edit `browserstack.json` to add more browser/OS combinations:
 ]
 ```
 
+**Note:** Changes to `browserstack.json.template` will be used in CI/CD. For local testing, update your local `browserstack.json` file.
+
 ### Changing Parallel Execution
-Update `parallels` in `browserstack.json`:
+Update `parallels` in `browserstack.json.template`:
 ```json
 "parallels": 3  // Run 3 tests in parallel
 ```
@@ -161,8 +218,17 @@ Update `parallels` in `browserstack.json`:
 
 ## 🔗 Related Files
 
-- `.github/workflows/cypress-browserstack.yml` - Main CI/CD workflow
-- `.github/workflows/cypress-browserstack-scheduled.yml` - Scheduled tests
-- `browserstack.json` - BrowserStack configuration
+- `.github/workflows/cypress-browserstack.yml` - Main CI/CD workflow (handles all triggers including scheduled runs)
+- `browserstack.json.template` - BrowserStack configuration template (committed to repo)
+- `browserstack.json` - BrowserStack configuration (generated dynamically, gitignored)
 - `cypress.config.js` - Cypress configuration
 - `package.json` - NPM scripts and dependencies
+
+## 📋 Workflow Architecture
+
+The workflow consists of two main jobs:
+
+1. **`determine-matrix`** - Analyzes the trigger event and branch name to determine which environments to test
+2. **`cypress-browserstack`** - Runs the actual Cypress tests on BrowserStack for each environment in the matrix
+
+This architecture allows for flexible environment selection based on the context of the workflow run.

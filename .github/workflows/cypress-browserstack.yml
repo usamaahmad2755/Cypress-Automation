@@ -6,14 +6,22 @@ on:
       - main
       - master
       - develop
+      - dev
+      - staging
+      - prod
   pull_request:
     branches:
       - main
       - master
       - develop
+      - dev
+      - staging
+      - prod
   schedule:
-    # Run daily at 2 AM UTC (adjust timezone as needed)
-    - cron: '0 2 * * *'
+    # Run daily at 8:20 PM UTC (20:20 UTC)
+    # Note: GitHub Actions uses UTC time. Adjust if you need a different timezone.
+    # Example: 8:20 PM EST = 01:20 UTC (next day), 8:20 PM PST = 04:20 UTC (next day)
+    - cron: '20 20 * * *'
   workflow_dispatch:
     inputs:
       environment:
@@ -34,8 +42,25 @@ jobs:
     steps:
       - id: set-matrix
         run: |
+          # Check if manual dispatch with environment selected
           if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.environment }}" ]; then
             echo "environments=[\"${{ github.event.inputs.environment }}\"]" >> $GITHUB_OUTPUT
+          # Check if scheduled run - run dev only
+          elif [ "${{ github.event_name }}" == "schedule" ]; then
+            echo "environments=[\"dev\"]" >> $GITHUB_OUTPUT
+          # Check if push to dev branch
+          elif [ "${{ github.event_name }}" == "push" ] && [ "${{ github.ref_name }}" == "dev" ]; then
+            echo "environments=[\"dev\"]" >> $GITHUB_OUTPUT
+          # Check if push to staging branch
+          elif [ "${{ github.event_name }}" == "push" ] && [ "${{ github.ref_name }}" == "staging" ]; then
+            echo "environments=[\"staging\"]" >> $GITHUB_OUTPUT
+          # Check if push to prod branch
+          elif [ "${{ github.event_name }}" == "push" ] && [ "${{ github.ref_name }}" == "prod" ]; then
+            echo "environments=[\"prod\"]" >> $GITHUB_OUTPUT
+          # Default: run dev only for push events
+          elif [ "${{ github.event_name }}" == "push" ]; then
+            echo "environments=[\"dev\"]" >> $GITHUB_OUTPUT
+          # For PRs: run dev and staging
           else
             echo "environments=[\"dev\", \"staging\"]" >> $GITHUB_OUTPUT
           fi
