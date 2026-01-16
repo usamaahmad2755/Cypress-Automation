@@ -81,7 +81,7 @@ The pipeline uses a dynamic matrix strategy that automatically determines which 
 **Triggers:**
 - Push to `main`, `master`, `develop`, `dev`, `staging`, or `prod` branches
 - Pull requests to `main`, `master`, `develop`, `dev`, `staging`, or `prod` branches
-- Scheduled daily at 2:00 AM UTC (configurable via cron)
+- Scheduled daily at 8:20 PM UTC (configurable via cron)
 - Manual workflow dispatch with environment selection
 
 **Branch-Based Execution Logic:**
@@ -137,8 +137,12 @@ git push origin feature/new-feature
 Edit the `cron` expression in `.github/workflows/cypress-browserstack.yml`:
 ```yaml
 schedule:
-  - cron: '0 2 * * *'  # 2 AM UTC daily
+  - cron: '20 20 * * *'  # 8:20 PM UTC daily
 ```
+
+**Cron Format:** `minute hour day month weekday`
+- Current: `20 20 * * *` = 8:20 PM UTC every day
+- To change timezone: Calculate UTC equivalent (e.g., 8:20 PM EST = 01:20 UTC next day)
 
 ## 🔧 Environment Configuration
 
