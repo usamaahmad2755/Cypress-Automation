@@ -17,6 +17,7 @@ on:
       - dev
       - staging
       - prod
+    types: [opened, synchronize, reopened]
   schedule:
     # Run daily at 8:20 PM UTC (20:20 UTC)
     # Note: GitHub Actions uses UTC time. Adjust if you need a different timezone.
@@ -37,6 +38,8 @@ on:
 jobs:
   determine-matrix:
     runs-on: ubuntu-latest
+    # Skip PR workflow for main/master/develop - let push event handle it
+    if: github.event_name != 'pull_request' || (github.event_name == 'pull_request' && github.event.pull_request.base.ref != 'main' && github.event.pull_request.base.ref != 'master' && github.event.pull_request.base.ref != 'develop')
     outputs:
       environments: ${{ steps.set-matrix.outputs.environments }}
     steps:
@@ -60,7 +63,10 @@ jobs:
           # Default: run dev only for push events
           elif [ "${{ github.event_name }}" == "push" ]; then
             echo "environments=[\"dev\"]" >> $GITHUB_OUTPUT
-          # For PRs: run dev and staging
+          # For PRs to main/master/develop: run dev only
+          elif [ "${{ github.event_name }}" == "pull_request" ] && ([ "${{ github.event.pull_request.base.ref }}" == "main" ] || [ "${{ github.event.pull_request.base.ref }}" == "master" ] || [ "${{ github.event.pull_request.base.ref }}" == "develop" ]); then
+            echo "environments=[\"dev\"]" >> $GITHUB_OUTPUT
+          # For other PRs: run dev and staging
           else
             echo "environments=[\"dev\", \"staging\"]" >> $GITHUB_OUTPUT
           fi

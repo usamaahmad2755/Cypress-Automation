@@ -94,9 +94,12 @@ The workflow automatically detects the branch name and runs the appropriate envi
 | Push | `staging` | `staging` only |
 | Push | `prod` | `prod` only |
 | Push | Any other branch (main, master, develop, feature branches, etc.) | `dev` only (default) |
-| Pull Request | Any branch | `dev` + `staging` |
+| Pull Request | To `main`/`master`/`develop` | **Skipped** (push event handles it) |
+| Pull Request | To other branches (`dev`, `staging`, `prod`) | `dev` + `staging` |
 | Scheduled | N/A | `dev` only |
 | Manual Dispatch | N/A | Selected environment only |
+
+**Note:** PRs to `main`/`master`/`develop` are skipped to avoid duplicate runs. When merged, the push event will run dev tests only.
 
 **Features:**
 - ✅ **Smart branch detection** - Automatically runs the right environment based on branch name
