@@ -43,6 +43,9 @@ jobs:
           # Check if manual dispatch with environment selected
           if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.environment }}" ]; then
             echo "environments=[\"${{ github.event.inputs.environment }}\"]" >> $GITHUB_OUTPUT
+          # Check if scheduled run - run dev only
+          elif [ "${{ github.event_name }}" == "schedule" ]; then
+            echo "environments=[\"dev\"]" >> $GITHUB_OUTPUT
           # Check if push to dev branch
           elif [ "${{ github.event_name }}" == "push" ] && [ "${{ github.ref_name }}" == "dev" ]; then
             echo "environments=[\"dev\"]" >> $GITHUB_OUTPUT
@@ -55,7 +58,7 @@ jobs:
           # Default: run dev only for push events
           elif [ "${{ github.event_name }}" == "push" ]; then
             echo "environments=[\"dev\"]" >> $GITHUB_OUTPUT
-          # For PRs and scheduled: run dev and staging
+          # For PRs: run dev and staging
           else
             echo "environments=[\"dev\", \"staging\"]" >> $GITHUB_OUTPUT
           fi
