@@ -81,7 +81,7 @@ The pipeline uses a dynamic matrix strategy that automatically determines which 
 **Triggers:**
 - Push to `main`, `master`, `develop`, `dev`, `staging`, or `prod` branches
 - Pull requests to `main`, `master`, `develop`, `dev`, `staging`, or `prod` branches
-- Scheduled daily at 8:20 PM UTC (configurable via cron)
+- Scheduled daily at 9:10 PM Pakistan Time (PKT) / 4:10 PM UTC (configurable via cron)
 - Manual workflow dispatch with environment selection
 
 **Branch-Based Execution Logic:**
@@ -140,12 +140,14 @@ git push origin feature/new-feature
 Edit the `cron` expression in `.github/workflows/cypress-browserstack.yml`:
 ```yaml
 schedule:
-  - cron: '20 20 * * *'  # 8:20 PM UTC daily
+  - cron: '10 16 * * *'  # 9:10 PM PKT / 4:10 PM UTC daily
 ```
 
 **Cron Format:** `minute hour day month weekday`
-- Current: `20 20 * * *` = 8:20 PM UTC every day
-- To change timezone: Calculate UTC equivalent (e.g., 8:20 PM EST = 01:20 UTC next day)
+- Current: `10 16 * * *` = 9:10 PM Pakistan Time (PKT) / 4:10 PM UTC every day
+- **Time Conversion:** Pakistan Standard Time (PKT) is UTC+5
+  - 9:10 PM PKT = 4:10 PM UTC (16:10 UTC)
+  - To change timezone: Calculate UTC equivalent (e.g., 9:10 PM EST = 02:10 UTC next day)
 
 ## 🔧 Environment Configuration
 
@@ -174,6 +176,30 @@ Results include:
 - **PR Comments**: Test results are automatically commented on pull requests
 
 ## 🛠️ Troubleshooting
+
+### Scheduled workflow not running
+**Common reasons and solutions:**
+1. **Workflow must be on default branch** - Scheduled workflows only run if the workflow file is on the default branch (usually `main` or `master`)
+   - ✅ Ensure `.github/workflows/cypress-browserstack.yml` is committed to the default branch
+   - ✅ Check: Go to Actions → Workflows → Check if the workflow appears
+
+2. **GitHub Actions delays** - Scheduled workflows can be delayed by up to 15 minutes
+   - ✅ Wait a bit and check again
+   - ✅ Check the "Scheduled workflows" section in Actions tab
+
+3. **Repository inactivity** - GitHub pauses scheduled workflows for inactive repositories
+   - ✅ Ensure the repository has activity in the last 60 days
+   - ✅ Make a commit or push to reactivate
+
+4. **Cron syntax verification** - Verify the cron expression is correct
+   - Current: `'10 16 * * *'` = 9:10 PM PKT / 4:10 PM UTC daily
+   - ✅ Test with a manual workflow dispatch first
+   - ✅ Use [crontab.guru](https://crontab.guru) to verify cron syntax
+
+5. **Check workflow status**
+   - Go to **Actions** tab → **"Cypress BrowserStack CI/CD"** workflow
+   - Look for scheduled runs in the workflow history
+   - Check if any errors appear
 
 ### Pipeline fails with authentication error
 - Verify `BROWSERSTACK_USERNAME` and `BROWSERSTACK_ACCESS_KEY` secrets are set correctly
