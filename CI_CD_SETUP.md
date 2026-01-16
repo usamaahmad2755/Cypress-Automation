@@ -81,7 +81,7 @@ The pipeline uses a dynamic matrix strategy that automatically determines which 
 **Triggers:**
 - Push to `main`, `master`, `develop`, `dev`, `staging`, or `prod` branches
 - Pull requests to `main`, `master`, `develop`, `dev`, `staging`, or `prod` branches
-- Scheduled daily at 9:10 PM Pakistan Time (PKT) / 4:10 PM UTC (configurable via cron)
+- Scheduled daily at 9:30 PM Pakistan Time (PKT) / 4:30 PM UTC (configurable via cron)
 - Manual workflow dispatch with environment selection
 
 **Branch-Based Execution Logic:**
@@ -94,12 +94,17 @@ The workflow automatically detects the branch name and runs the appropriate envi
 | Push | `staging` | `staging` only |
 | Push | `prod` | `prod` only |
 | Push | Any other branch (main, master, develop, feature branches, etc.) | `dev` only (default) |
-| Pull Request | To `main`/`master`/`develop` | **Skipped** (push event handles it) |
+| Pull Request | To `main`/`master`/`develop` | **Not triggered** (no workflow runs) |
 | Pull Request | To other branches (`dev`, `staging`, `prod`) | `dev` + `staging` |
-| Scheduled | N/A | `dev` only |
+| Scheduled | Default branch (main/master) | `dev` only |
 | Manual Dispatch | N/A | Selected environment only |
 
-**Note:** PRs to `main`/`master`/`develop` are skipped to avoid duplicate runs. When merged, the push event will run dev tests only.
+**Note:** 
+- PRs to `main`/`master`/`develop` don't trigger workflows to avoid duplicate jobs. When you merge a PR to main, **only one job runs** (push event) with dev tests only.
+- **Scheduled workflows** always run on the **default branch** of your repository (usually `main` or `master`), not on `dev` branch. 
+  - To check your default branch: Go to repository Settings → General → Default branch
+  - The workflow file (`.github/workflows/cypress-browserstack.yml`) **must be on the default branch** for scheduled runs to work
+  - If you have both `main` and `dev` branches, scheduled runs will use whichever is set as the default branch
 
 **Features:**
 - ✅ **Smart branch detection** - Automatically runs the right environment based on branch name
@@ -140,14 +145,14 @@ git push origin feature/new-feature
 Edit the `cron` expression in `.github/workflows/cypress-browserstack.yml`:
 ```yaml
 schedule:
-  - cron: '10 16 * * *'  # 9:10 PM PKT / 4:10 PM UTC daily
+  - cron: '30 16 * * *'  # 9:30 PM PKT / 4:30 PM UTC daily
 ```
 
 **Cron Format:** `minute hour day month weekday`
-- Current: `10 16 * * *` = 9:10 PM Pakistan Time (PKT) / 4:10 PM UTC every day
+- Current: `30 16 * * *` = 9:30 PM Pakistan Time (PKT) / 4:30 PM UTC every day
 - **Time Conversion:** Pakistan Standard Time (PKT) is UTC+5
-  - 9:10 PM PKT = 4:10 PM UTC (16:10 UTC)
-  - To change timezone: Calculate UTC equivalent (e.g., 9:10 PM EST = 02:10 UTC next day)
+  - 9:30 PM PKT = 4:30 PM UTC (16:30 UTC)
+  - To change timezone: Calculate UTC equivalent (e.g., 9:30 PM EST = 02:30 UTC next day)
 
 ## 🔧 Environment Configuration
 
@@ -192,7 +197,7 @@ Results include:
    - ✅ Make a commit or push to reactivate
 
 4. **Cron syntax verification** - Verify the cron expression is correct
-   - Current: `'10 16 * * *'` = 9:10 PM PKT / 4:10 PM UTC daily
+   - Current: `'30 16 * * *'` = 9:30 PM PKT / 4:30 PM UTC daily
    - ✅ Test with a manual workflow dispatch first
    - ✅ Use [crontab.guru](https://crontab.guru) to verify cron syntax
 
