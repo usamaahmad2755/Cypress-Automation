@@ -1,0 +1,187 @@
+name: Cypress BrowserStack Tests
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
+      - dev
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to run tests against'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+      branch:
+        description: 'Branch name for build identification'
+        required: false
+        default: ''
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  cypress-browserstack:
+    name: Run Cypress Tests on BrowserStack
+    runs-on: ubuntu-latest
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: 
+          - ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || 'dev' }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Determine environment and base URL
+        id: env-config
+        run: |
+          if [ "${{ matrix.environment }}" == "dev" ]; then
+            echo "BASE_URL=https://notarypro-web-v2-demo-b3hkbkbvfudsb6ad.canadacentral-01.azurewebsites.net/" >> $GITHUB_OUTPUT
+            echo "ENV=dev" >> $GITHUB_OUTPUT
+          elif [ "${{ matrix.environment }}" == "staging" ]; then
+            echo "BASE_URL=https://notarypro.atlassian.net/jira/software/projects/QA/boards/78?selectedIssue=QA-7" >> $GITHUB_OUTPUT
+            echo "ENV=staging" >> $GITHUB_OUTPUT
+          elif [ "${{ matrix.environment }}" == "prod" ]; then
+            echo "BASE_URL=https://express.notarypro.ca" >> $GITHUB_OUTPUT
+            echo "ENV=prod" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create browserstack.json from template
+        run: |
+          cat > browserstack.json << EOF
+          {
+            "auth": {
+              "username": "${{ secrets.BROWSERSTACK_USERNAME }}",
+              "access_key": "${{ secrets.BROWSERSTACK_ACCESS_KEY }}"
+            },
+            "browsers": [
+              {
+                "browser": "chrome",
+                "os": "Windows 10",
+                "versions": ["latest"]
+              }
+            ],
+            "run_settings": {
+              "cypress_config_file": "cypress.config.js",
+              "project_name": "NotaryPro",
+              "build_name": "CI Build - ${{ github.ref_name }} - ${{ github.run_number }} - ${{ matrix.environment }}",
+              "exclude": [],
+              "parallels": 1,
+              "npm_dependencies": {
+                "dotenv": "^17.2.3",
+                "cypress-real-events": "^1.15.0"
+              },
+              "auto_import_dev_dependencies": false,
+              "exclude_dependencies": [],
+              "package_config_options": {},
+              "headless": true,
+              "system_env_vars": ["BASE_URL", "ENV"]
+            },
+            "connection_settings": {
+              "local": false,
+              "local_identifier": null,
+              "local_mode": null,
+              "local_config_file": null
+            },
+            "disable_usage_reporting": false
+          }
+          EOF
+
+      - name: Run Cypress tests on BrowserStack
+        env:
+          BASE_URL: ${{ steps.env-config.outputs.BASE_URL }}
+          ENV: ${{ steps.env-config.outputs.ENV }}
+        run: |
+          echo "Running tests against ${{ steps.env-config.outputs.ENV }} environment"
+          echo "Base URL: ${{ steps.env-config.outputs.BASE_URL }}"
+          npx browserstack-cypress run
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browserstack-results-${{ matrix.environment }}-${{ github.run_number }}
+          path: |
+            results/
+            log/
+          retention-days: 30
+
+      - name: Comment PR with test results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            let comment = '## 🧪 BrowserStack Test Results\n\n';
+            comment += `**Environment:** ${{ matrix.environment }}\n`;
+            comment += `**Status:** ${{ job.status }}\n\n`;
+            
+            // Try to read and parse the results JSON if it exists
+            const resultsPath = path.join('results', 'browserstack-cypress-report.json');
+            if (fs.existsSync(resultsPath)) {
+              try {
+                const results = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
+                comment += `**Build URL:** [View on BrowserStack](${results.build_url || 'N/A'})\n\n`;
+              } catch (e) {
+                comment += 'Results file could not be parsed.\n\n';
+              }
+            }
+            
+            comment += `---\n*Triggered by @${{ github.actor }}*`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  # Optional: Run local Cypress tests as a fallback or for quick validation
+  cypress-local:
+    name: Run Cypress Tests Locally (Quick Check)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Cypress tests locally (headless)
+        env:
+          BASE_URL: https://notarypro-web-v2-demo-b3hkbkbvfudsb6ad.canadacentral-01.azurewebsites.net/
+          ENV: dev
+        run: |
+          echo "Running quick local validation tests..."
+          npm run cy:dev || echo "Local tests completed with status: $?"

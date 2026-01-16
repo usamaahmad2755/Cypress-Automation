@@ -1,7 +1,7 @@
 {
     "auth": {
-      "username": "troycarter_6FUyMi",
-      "access_key": "HQwypytP5PYsHyoLWYsz"
+      "username": "YOUR_BROWSERSTACK_USERNAME",
+      "access_key": "YOUR_BROWSERSTACK_ACCESS_KEY"
     },
     "browsers": [
         {
